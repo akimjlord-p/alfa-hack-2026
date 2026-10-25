@@ -1,0 +1,18 @@
+{
+  "info": {"name": "akimai demo flow", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:8000"},
+    {"key": "sessionId", "value": ""},
+    {"key": "applicationId", "value": ""},
+    {"key": "reviewToken", "value": "demo-reviewer-token"}
+  ],
+  "item": [
+    {"name": "Health", "request": {"method": "GET", "url": "{{baseUrl}}/api/health"}},
+    {"name": "Start intake", "request": {"method": "POST", "url": "{{baseUrl}}/api/intake/start"}, "event": [{"listen": "test", "script": {"exec": ["pm.collectionVariables.set('sessionId', pm.response.json().session_id);"]}}]},
+    {"name": "Choose industry", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"choice_id\":\"construction\"}"}, "url": "{{baseUrl}}/api/intake/{{sessionId}}/message"}},
+    {"name": "Demo reviewer login", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"username\":\"reviewer_demo\",\"password\":\"reviewer-2026\"}"}, "url": "{{baseUrl}}/api/demo/login"}},
+    {"name": "Reviewer queue", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{reviewToken}}"}], "url": "{{baseUrl}}/api/reviewer/applications"}},
+    {"name": "Get application", "request": {"method": "GET", "url": "{{baseUrl}}/api/applications/{{applicationId}}"}},
+    {"name": "Approve in demo", "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{reviewToken}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"status\":\"approved\",\"note\":\"Демо-проверка завершена\"}"}, "url": "{{baseUrl}}/api/reviewer/applications/{{applicationId}}/transition"}}
+  ]
+}
