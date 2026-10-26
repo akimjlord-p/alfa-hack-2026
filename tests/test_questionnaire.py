@@ -1,5 +1,6 @@
 import unittest
 
+from app.ai import local_extract
 from app.questionnaire import QUESTIONS, PURPOSE_CHOICES_BY_INDUSTRY, choices_for_question, enrich_free_text_answer, insights, next_question, progress, question_payload, validate_patch
 
 
@@ -71,6 +72,15 @@ class QuestionnaireTests(unittest.TestCase):
     def test_progress_never_claims_finished_early(self):
         state = progress({"industry": "agriculture"}, ["industry"])
         self.assertLess(state["percent"], 100)
+
+    def test_asset_status_understands_natural_free_text(self):
+        question = QUESTIONS["asset_status"]
+        self.assertEqual(local_extract("Нашел объект, продавец готов принять оплату", question),
+                         {"asset_status": "ready"})
+        self.assertEqual(local_extract("Пока ищем объект", question),
+                         {"asset_status": "search"})
+        self.assertEqual(local_extract("Оплата будет по этапам", question),
+                         {"asset_status": "staged"})
 
 
 if __name__ == "__main__":

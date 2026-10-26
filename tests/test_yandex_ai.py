@@ -39,6 +39,16 @@ class YandexAITests(unittest.TestCase):
     @patch.object(ai, "_chat_json")
     @patch.object(ai, "FOLDER", "test-folder")
     @patch.object(ai, "KEY", "test-key")
+    def test_extract_keeps_safe_local_phrase_when_ai_is_uncertain(self, chat):
+        chat.return_value = {"facts": {}, "evidence": {}}
+        facts, mode = ai.extract("Нашел объект, продавец готов принять оплату",
+                                 QUESTIONS["asset_status"], {})
+        self.assertEqual(facts, {"asset_status": "ready"})
+        self.assertEqual(mode, "ai")
+
+    @patch.object(ai, "_chat_json")
+    @patch.object(ai, "FOLDER", "test-folder")
+    @patch.object(ai, "KEY", "test-key")
     def test_strategy_rejects_unrelated_evidence(self, chat):
         chat.return_value = {"preferences": [{"instrument": "credit_line", "evidence_fields": ["collateral"]}]}
         selected, mode = ai.strategy_preferences({"purpose": "seasonal", "collateral": "none"})

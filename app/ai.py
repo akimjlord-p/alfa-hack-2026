@@ -62,7 +62,10 @@ Respond with facts={} when uncertain. The app, not you, selects the next questio
 
 def local_extract(text: str, question: Question) -> dict:
     """Conservative fallback for exact amounts and a few explicit intent phrases."""
-    lower = text.lower()
+    # Keep the deterministic fallback useful even when the AI provider is
+    # unavailable. Normalising `ё` also makes Russian free-text answers less
+    # sensitive to the keyboard the user has chosen.
+    lower = text.casefold().replace("ё", "е")
     facts = {}
     if question.id == "industry":
         for term, industry in [("ферм", "agriculture"), ("сельск", "agriculture"),
@@ -84,9 +87,12 @@ def local_extract(text: str, question: Question) -> dict:
         if re.search(r"\bип\b", lower): facts["legal_form"] = "ip"
         elif re.search(r"\bооо\b", lower): facts["legal_form"] = "ooo"
     if question.id == "asset_status":
-        if "не выбран" in lower or "ищем" in lower: facts["asset_status"] = "search"
-        elif "этап" in lower: facts["asset_status"] = "staged"
-        elif "выбран" in lower: facts["asset_status"] = "ready"
+        if any(x in lower for x in ("не выбран", "не нашли", "не нашел", "не нашла", "ищем", "ищу объект", "нет объекта", "объекта нет")):
+            facts["asset_status"] = "search"
+        elif any(x in lower for x in ("этап", "частями", "несколько платеж", "рассроч")):
+            facts["asset_status"] = "staged"
+        elif any(x in lower for x in ("выбран", "нашел", "нашли", "есть объект", "объект есть", "готов принять оплат", "можно оплат")):
+            facts["asset_status"] = "ready"
     if question.id == "urgency":
         if "сегодня" in lower or "завтра" in lower: facts["urgency_days"] = 1
         elif "недел" in lower: facts["urgency_days"] = 7
@@ -173,6 +179,10 @@ def extract(text: str, question: Question, profile: dict) -> tuple[dict, str]:
         # The model must cite words actually present in this answer for each fact.
         facts = {key: value for key, value in facts.items()
                  if isinstance(evidence.get(key), str) and evidence[key].strip().lower() in text.lower()}
+        # Keep deterministic phrases as a safety net even when Yandex returns
+        # an empty or overly cautious answer. The model remains authoritative
+        # for fields it extracted with evidence; the fallback only fills gaps.
+        facts = {**local_extract(text, question), **facts}
         return facts, "ai"
     except (OpenAIError, RuntimeError, KeyError, ValueError, TypeError, json.JSONDecodeError) as error:
         LOGGER.warning("Yandex fact extraction unavailable: %s", type(error).__name__)

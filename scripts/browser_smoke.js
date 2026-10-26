@@ -49,6 +49,17 @@ const { chromium } = require(process.env.PLAYWRIGHT_CORE_PATH || 'playwright-cor
   assert.deepEqual(errors, []);
   console.log('BROWSER_FLOW_AND_APPLICATION_OK', await page.locator('.card').count(), 'cards');
 
+  const freeText = await browser.newPage(browserOptions({ width: 390, height: 700 }));
+  freeText.on('pageerror', error => errors.push(error.message));
+  await freeText.goto(baseUrl);
+  await freeText.getByRole('button', { name: 'Строительство', exact: true }).click();
+  await freeText.getByRole('button', { name: 'Строительство или модернизация', exact: true }).click();
+  await freeText.locator('#text').fill('Нашел объект, продавец готов принять оплату');
+  await freeText.getByRole('button', { name: 'Отправить', exact: true }).click();
+  await freeText.getByRole('button', { name: 'Да, вся сумма сразу', exact: true }).waitFor({ timeout: 10000 });
+  assert.equal(await freeText.getByText('Не удалось определить ответ. Уточните его или выберите вариант.').count(), 0);
+  console.log('FREE_TEXT_ASSET_STATUS_OK');
+
   const mobile = await browser.newPage(browserOptions({ width: 390, height: 700 }));
   mobile.on('pageerror', error => errors.push(error.message));
   await mobile.goto(baseUrl);
