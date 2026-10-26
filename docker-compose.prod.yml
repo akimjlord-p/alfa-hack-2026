@@ -22,7 +22,7 @@ services:
       DATABASE_URL: postgresql+psycopg://credit:${POSTGRES_PASSWORD}@db:5432/credit_navigator
       YANDEX_API_KEY: ${YANDEX_API_KEY:?set YANDEX_API_KEY}
       YANDEX_FOLDER_ID: ${YANDEX_FOLDER_ID:?set YANDEX_FOLDER_ID}
-      YANDEX_MODEL: ${YANDEX_MODEL:-aliceai-llm-flash}
+      YANDEX_MODEL: ${YANDEX_MODEL:-yandexgpt/latest}
     depends_on:
       db:
         condition: service_healthy

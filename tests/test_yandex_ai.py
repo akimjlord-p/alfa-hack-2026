@@ -16,7 +16,7 @@ class YandexAITests(unittest.TestCase):
         result = ai._chat_json("Return JSON", {"question": "test"}, 100)
         self.assertEqual(result, {"facts": {}, "evidence": {}})
         kwargs = client.chat.completions.create.call_args.kwargs
-        self.assertEqual(kwargs["model"], f"gpt://test-folder/{ai.MODEL}")
+        self.assertEqual(kwargs["model"], ai.model_uri("test-folder", ai.MODEL))
         self.assertEqual(kwargs["response_format"], {"type": "json_object"})
         self.assertEqual(kwargs["max_tokens"], 100)
 
@@ -24,7 +24,12 @@ class YandexAITests(unittest.TestCase):
     def test_sdk_client_has_project_retries_and_timeout(self, factory):
         ai._make_client("test-key", "test-folder")
         factory.assert_called_once_with(api_key="test-key", base_url=ai.BASE_URL,
-                                        project="test-folder", max_retries=2, timeout=20.0)
+                                        max_retries=2, timeout=12.0)
+
+    def test_model_uri_is_canonical(self):
+        self.assertEqual(ai.model_uri("folder", "yandexgpt"), "gpt://folder/yandexgpt/latest")
+        self.assertEqual(ai.model_uri("folder", "yandexgpt/latest"), "gpt://folder/yandexgpt/latest")
+        self.assertEqual(ai.model_uri("folder", "gpt://other/model/latest"), "gpt://other/model/latest")
 
     @patch.object(ai, "_chat_json")
     @patch.object(ai, "FOLDER", "test-folder")

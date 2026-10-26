@@ -64,7 +64,7 @@ AI-слой необязателен: без ключа анкета продо�
 ```dotenv
 YANDEX_FOLDER_ID=your-folder-id
 YANDEX_API_KEY=your-api-key
-YANDEX_MODEL=aliceai-llm-flash
+YANDEX_MODEL=yandexgpt/latest
 ```
 
 Затем пересоберите приложение:

@@ -12,7 +12,7 @@ from .questionnaire import Question, validate_patch
 
 LOGGER = logging.getLogger(__name__)
 
-MODEL = os.getenv("YANDEX_MODEL", "aliceai-llm-flash")
+MODEL = os.getenv("YANDEX_MODEL", "yandexgpt/latest").strip()
 KEY = os.getenv("YANDEX_API_KEY", "")
 FOLDER = os.getenv("YANDEX_FOLDER_ID", "")
 BASE_URL = "https://ai.api.cloud.yandex.net/v1"
@@ -21,11 +21,24 @@ BASE_URL = "https://ai.api.cloud.yandex.net/v1"
 def _make_client(key: str, folder: str):
     if not key or not folder:
         return None
-    return OpenAI(api_key=key, base_url=BASE_URL, project=folder,
-                  max_retries=2, timeout=20.0)
+    # Yandex AI Studio exposes an OpenAI-compatible endpoint. The documented
+    # connection only needs the API key and base URL; `folder` belongs in the
+    # model URI below, not in an OpenAI project header.
+    return OpenAI(api_key=key, base_url=BASE_URL, max_retries=2, timeout=12.0)
 
 
 CLIENT = _make_client(KEY, FOLDER)
+
+
+def model_uri(folder: str, model: str) -> str:
+    """Return the canonical Yandex model URI accepted by AI Studio."""
+    value = (model or "yandexgpt/latest").strip()
+    if value.startswith("gpt://"):
+        return value
+    value = value.strip("/")
+    if not value.endswith("/latest") and "/" not in value:
+        value = f"{value}/latest"
+    return f"gpt://{folder}/{value}"
 
 
 def close_client() -> None:
@@ -39,7 +52,7 @@ def _chat_json(system: str, user: dict, max_tokens: int, *, timeout: float | Non
         raise RuntimeError("Yandex AI Studio is not configured")
     client = CLIENT.with_options(timeout=timeout, max_retries=0) if timeout is not None else CLIENT
     response = client.chat.completions.create(
-        model=f"gpt://{FOLDER}/{MODEL}",
+        model=model_uri(FOLDER, MODEL),
         messages=[{"role": "system", "content": system},
                   {"role": "user", "content": json.dumps(user, ensure_ascii=False)}],
         response_format={"type": "json_object"},
@@ -173,7 +186,7 @@ def extract(text: str, question: Question, profile: dict) -> tuple[dict, str]:
     prompt = {"question_id": question.id, "question": question.title,
               "known_profile": profile, "last_user_message": text}
     try:
-        parsed = _chat_json(SYSTEM, prompt, 450)
+        parsed = _chat_json(SYSTEM, prompt, 450, timeout=8.0)
         evidence = parsed.get("evidence", {})
         facts = validate_patch(parsed.get("facts", {}))
         # The model must cite words actually present in this answer for each fact.
